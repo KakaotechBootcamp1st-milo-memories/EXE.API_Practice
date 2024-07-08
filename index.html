@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울의 날씨</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .weather-item {
+            margin-bottom: 10px;
+        }
+        .weather-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .weather-info {
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="weather-title">서울의 날씨</h1>
+    <div id="weatherData"></div>
+
+    <script>
+        $(document).ready(function() {
+            function getClosestBaseTime() {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+                const baseTimes = [2, 5, 8, 11, 14, 17, 20, 23];
+                let closestBaseTime = Math.floor(hours/3) + 2;
+
+                return closestBaseTime.toString().padStart(2, '0') + '00';
+            }
+
+            const apiKey = 'USqOBIR12G%2FOX06jvrpjJO8u83fPtR%2BantCKXInq3M7vstatyt0InJGwDtZ9YyzR9AfyJp3mq%2B12o1%2FTQmyCfA%3D%3D'; // 인코딩된 API 키
+            const today = new Date();
+            const baseDate = `${today.getFullYear()}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
+            const baseTime = getClosestBaseTime();
+            const nx = 60;
+            const ny = 127;
+            url = `http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey=${apiKey}&numOfRows=10&pageNo=1&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny} `;
+
+            setInterval(updateWeatherData, 1000);
+        });
+
+        let url;
+
+        async function fetchWeatherData() {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const text = await response.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, "application/xml");
+                
+                return xml;
+            } catch (error) {
+                console.error('There was a problem with the fetch operation:', error);
+            }
+        }
+
+        function displayWeatherData(xml) {
+            const items = xml.getElementsByTagName("item");
+            let weatherInfo = "";
+
+            const categoryDescriptions = {
+                TMP: "온도",
+                SKY: "하늘 상태",
+                REH: "습도",
+                PCP: "강수량"
+            };
+
+            if (items.length === 0) {
+                weatherInfo = "데이터가 없습니다.";
+            } else {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    const category = item.getElementsByTagName("category")[0]?.textContent;
+                    const fcstDate = item.getElementsByTagName("fcstDate")[0]?.textContent;
+                    const fcstTime = item.getElementsByTagName("fcstTime")[0]?.textContent;
+                    const fcstValue = item.getElementsByTagName("fcstValue")[0]?.textContent;
+
+                    if (categoryDescriptions[category]) {
+                        weatherInfo += `<div class="weather-item weather-info"><strong>${categoryDescriptions[category]}:</strong> ${fcstValue}</div>`;
+                    }
+                }
+            }
+
+            const weatherDiv = document.getElementById('weatherData');
+            weatherDiv.innerHTML = weatherInfo;
+            console.log('Weather Info:', weatherInfo); // Weather info 확인
+        }
+
+        async function updateWeatherData() {
+            const xml = await fetchWeatherData();
+            if (xml) {
+                displayWeatherData(xml);
+            }
+        }
+    </script>
+</body>
+</html>
+            
